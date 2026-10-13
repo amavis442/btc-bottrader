@@ -1,0 +1,29 @@
+{
+  "mode": "paper",
+  "product_id": "BTC-EUR",
+  "fallback_product_id": "BTC-USD",
+  "run_duration": "0",
+  "candle_interval": "10m",
+  "sma_short": 10,
+  "sma_long": 50,
+  "flat_threshold_pct": 0.5,
+  "max_budget_eur": 50,
+  "paper_start_eur": 100,
+  "fees": { "refresh_interval": "24h", "fallback_maker_pct": 0.25, "fallback_taker_pct": 0.50 },
+  "take_profit": [
+    { "net_profit_pct": 6, "sell_pct_of_remaining": 50 },
+    { "net_profit_pct": 12, "sell_pct_of_remaining": 65 }
+  ],
+  "trailing_stop_pct": 5,
+  "buy_limit_offset_pct": 0,
+  "buy_order_timeout": "10m",
+  "stop_order_timeout": "60s",
+  "cooldown_candles_reversal": 50,
+  "cooldown_candles_rising": 5,
+  "database": { "driver": "sqlite", "dsn": "data/tradingbot.db" },
+  "api": { "listen": "127.0.0.1:8080", "token": "", "cors_origins": [] },
+  "coinbase": { "key_name": "", "private_key": "" },
+  "telegram": { "bot_token": "", "chat_id": "" },
+  "report": { "daily_at": "08:00", "timezone": "Europe/Amsterdam" },
+  "log": { "level": "info", "file": "logs/tradingbot.log" }
+}

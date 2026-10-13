@@ -1,0 +1,7 @@
+config.json
+data/
+logs/
+*.db
+/tradingbot
+/tradingbot.exe
+bin/
