@@ -1,0 +1,67 @@
+# systemd-unit voor de BTC-tradingbot.
+# Installeren: zie deploy/install.md. Pas de paden aan als de bot ergens anders staat.
+
+[Unit]
+Description=BTC-tradingbot (Coinbase)
+Documentation=file:/opt/tradingbot/plan.md
+After=network-online.target time-sync.target
+Wants=network-online.target time-sync.target
+# Deze twee horen in [Unit], niet in [Service]: systemd negeert ze in [Service] sinds v230.
+# Na 5 mislukte starts binnen 5 minuten geeft systemd het op; dat is het gewenste gedrag bij een fout
+# in config.json: één keer falen en stoppen, geen herstart-lus. reset-failed wist de teller.
+StartLimitIntervalSec=300
+StartLimitBurst=5
+# De bot heeft de Coinbase-API nodig (marktdata, orders) en een kloppende klok: het JWT voor de
+# Coinbase-API is maar 2 minuten geldig, dus zonder tijdsynchronisatie start hij wel maar faalt de
+# eerste ronde met een 401.
+
+[Service]
+Type=simple
+User=tradingbot
+Group=tradingbot
+# De paden in config.json zijn relatief (data/tradingbot.db, logs/tradingbot.log, data/api_token),
+# dus de werkmap moet de map zijn waar de bot geïnstalleerd is.
+WorkingDirectory=/opt/tradingbot
+ExecStart=/opt/tradingbot/bin/tradingbot-linux-amd64 -config /opt/tradingbot/config.json
+# Optioneel: secrets buiten config.json houden (TRADINGBOT_COINBASE_KEY_NAME,
+# TRADINGBOT_COINBASE_PRIVATE_KEY, TRADINGBOT_API_TOKEN, TRADINGBOT_TELEGRAM_*).
+# De '-' betekent: geen fout als het bestand niet bestaat. Maak het 0600 en eigenaar tradingbot.
+EnvironmentFile=-/opt/tradingbot/env
+
+# Afsluiten: de bot vangt SIGTERM af, rondt de lopende actie af, stuurt de laatste Telegram-meldingen
+# (max 15s) en sluit de database netjes. Daar is 30s ruim genoeg voor.
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+# Herstarten bij een crash (exitcode != 0) of een mislukte start, bijv. een API-fout of een bezette
+# poort. Een bewuste stop eindigt met exitcode 0 en blijft gestopt: dat gebeurt bij /control/stop via
+# de API en als run_duration verstreken is. Daarom on-failure en niet always: anders zou systemd de
+# bot direct weer starten nadat je hem bewust hebt gestopt.
+Restart=on-failure
+RestartSec=5
+
+# Logging: naar de journal (via stdout) én naar het roterende bestand uit config.json (log.file).
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tradingbot
+
+# Beveiliging. De bot schrijft alleen in data/ (database, api_token) en logs/ (roterend logbestand);
+# de rest van het systeem mag read-only zijn. Hij leest niets uit $HOME en gebruikt geen /tmp.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+ReadWritePaths=/opt/tradingbot/data /opt/tradingbot/logs
+# Alleen IPv4/IPv6 (Coinbase, Telegram) en een unix-socket (DNS via nscd).
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target
